@@ -1,0 +1,12 @@
+{
+  "name": "Starlight Run",
+  "short_name": "Starlight Run",
+  "description": "A full-screen endless runner through a starlit forest.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#161b48",
+  "theme_color": "#161b48",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
