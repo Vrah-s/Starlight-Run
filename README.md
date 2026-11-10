@@ -1,6 +1,6 @@
 # Starlight Run
 
-A mobile-first, full-screen portrait 3D endless runner inspired by the supplied reference: a blocky runner races along a fantasy trail, changes lanes, jumps or slides past hazards, and collects coins and glowing stars. It uses a locally bundled Three.js WebGL 3D renderer and original low-poly models, so the engine and game assets can be cached together for offline play.
+A mobile-first, full-screen portrait 3D endless runner inspired by the supplied reference: a stylized adventurer races along a moonlit fantasy trail, changes lanes, jumps or slides past hazards, and collects coins and glowing stars. It uses a locally bundled Three.js WebGL 3D renderer and original procedural scenery, so the engine and game assets can be cached together for offline play.
 
 ## Touch controls
 
@@ -22,5 +22,5 @@ Upload the contents of this folder to a public GitHub repository and enable GitH
 
 ## Current prototype
 
-This prototype has a three-lane 3D course, an animated low-poly runner, moving forest scenery, jump/slide hazards, collectible coins and stars, three lives, score, best score, sound effects, pause, and persistent totals. Its models and scenery are original procedural shapes rather than the reference image’s art or assets. The 3D runtime is included locally as `vendor-three.module.js` and cached by the service worker.
+This prototype has a three-lane 3D course, an animated runner, moving forest scenery, jump/slide hazards, collectible coins and stars, three lives, score, best score, sound effects, pause, and persistent totals. Its models and scenery are original procedural shapes rather than the reference image’s art or assets. The 3D runtime is included locally as `vendor-three.module.js` and cached by the service worker.
 

@@ -46,7 +46,16 @@
     </section>
     <button class="pause-button hidden" id="pause-button" aria-label="Pause game">Ⅱ</button>
     <div class="landscape-message hidden" id="landscape-message"><span>↻</span><strong>Turn your phone upright</strong><small>Starlight Run is made for portrait screens.</small></div>
+    <div class="startup-error hidden" id="startup-error" role="status"></div>
   </main>
-  <script type="module" src="app.js"></script>
+  <script>
+    window.addEventListener('error', event => {
+      const panel = document.getElementById('startup-error');
+      if (!panel || !event.message) return;
+      panel.textContent = `The 3D scene could not start: ${event.message}${event.lineno ? ` (line ${event.lineno})` : ''}`;
+      panel.classList.remove('hidden');
+    });
+  </script>
+  <script type="module" src="app.js?v=6"></script>
 </body>
 </html>

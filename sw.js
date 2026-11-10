@@ -1,5 +1,5 @@
-const CACHE_NAME = 'starlight-run-v2';
-const FILES = ['./', './index.html', './styles.css', './app.js', './vendor-three.module.js', './manifest.webmanifest', './icon.svg'];
+const CACHE_NAME = 'starlight-run-v9';
+const FILES = ['./', './index.html', './styles.css', './app.js?v=6', './vendor-three.module.js', './three.core.js', './manifest.webmanifest', './icon.svg'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(FILES)));
   self.skipWaiting();
