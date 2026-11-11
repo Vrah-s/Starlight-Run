@@ -49,13 +49,19 @@
     <div class="startup-error hidden" id="startup-error" role="status"></div>
   </main>
   <script>
-    window.addEventListener('error', event => {
+    window.__starlightReady = false;
+    const showStartupError = message => {
       const panel = document.getElementById('startup-error');
-      if (!panel || !event.message) return;
-      panel.textContent = `The 3D scene could not start: ${event.message}${event.lineno ? ` (line ${event.lineno})` : ''}`;
+      if (!panel) return;
+      panel.textContent = `The game could not start: ${message}. Check your connection and reload the page.`;
       panel.classList.remove('hidden');
+    };
+    window.addEventListener('error', event => {
+      if (event.message) showStartupError(event.message);
     });
+    window.addEventListener('unhandledrejection', event => showStartupError(event.reason?.message || 'a game resource failed to load'));
+    setTimeout(() => { if (!window.__starlightReady) showStartupError('the game script did not load'); }, 9000);
   </script>
-  <script type="module" src="app.js?v=6"></script>
+  <script type="module" src="app.js?v=7"></script>
 </body>
 </html>

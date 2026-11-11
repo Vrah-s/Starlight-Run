@@ -416,6 +416,19 @@ function playSound(kind) {
     osc.connect(gain); gain.connect(audioContext.destination); osc.start(); osc.stop(audioContext.currentTime + duration);
   } catch { /* Sound may be unavailable in some mobile browsers. */ }
 }
+// Mobile browsers do not all synthesize a click consistently for full-screen
+// PWAs. Activate on primary pointer release, then ignore its follow-up click.
+function bindTap(id, action) {
+  const button = $(id); let lastPointerActivation = -Infinity;
+  button.addEventListener('pointerup', event => {
+    if (!event.isPrimary || event.button !== 0) return;
+    lastPointerActivation = performance.now(); action();
+  });
+  button.addEventListener('click', event => {
+    if (event.detail !== 0 && performance.now() - lastPointerActivation < 700) { event.preventDefault(); return; }
+    action();
+  });
+}
 function frame(now) {
   const delta = Math.min(.05, Math.max(0, (now - lastFrame) / 1000 || 0)); lastFrame = now;
   update(delta); renderer.render(scene, camera); requestAnimationFrame(frame);
@@ -424,7 +437,7 @@ function frame(now) {
 canvas.addEventListener('pointerdown', event => { if (event.target.closest('button')) return; swipeStart = { x: event.clientX, y: event.clientY }; });
 canvas.addEventListener('pointerup', event => { if (!swipeStart) return; const dx = event.clientX - swipeStart.x, dy = event.clientY - swipeStart.y; swipeStart = null; doSwipe(dx, dy); });
 canvas.addEventListener('pointercancel', () => swipeStart = null);
-$('start-button').addEventListener('click', startRun); $('restart-button').addEventListener('click', startRun); $('pause-restart').addEventListener('click', startRun);
+bindTap('start-button', startRun); bindTap('restart-button', startRun); bindTap('pause-restart', startRun);
 $('pause-button').addEventListener('click', pauseRun); $('resume-button').addEventListener('click', resumeRun);
 $('sound-button').addEventListener('click', () => { soundOn = !soundOn; $('sound-button').textContent = soundOn ? '◖))' : '◖'; $('sound-button').setAttribute('aria-label', soundOn ? 'Sound on' : 'Sound off'); if (soundOn) playSound('coin'); });
 window.addEventListener('resize', resize); window.addEventListener('orientationchange', resize);
@@ -432,4 +445,5 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && pha
 function readSave() { try { return { ...freshSave, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; } catch { return { ...freshSave }; } }
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch { /* A full local store does not stop a run. */ } }
 resize(); updateHud(); requestAnimationFrame(frame);
+window.__starlightReady = true;
 if ('serviceWorker' in navigator && location.protocol !== 'file:') window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
