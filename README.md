@@ -22,5 +22,5 @@ Upload the contents of this folder to a public GitHub repository and enable GitH
 
 ## Current prototype
 
-This prototype has a three-lane 3D course, an animated runner, moving forest scenery, jump/slide hazards, collectible coins and stars, three lives, score, best score, sound effects, pause, and persistent totals. Its models and scenery are original procedural shapes rather than the reference image’s art or assets. The 3D runtime is included locally as `vendor-three.module.js` and cached by the service worker.
+This prototype has a three-lane 3D course, an animated runner, moving forest scenery, jump/slide hazards, collectible coins and stars, three lives, score, best score, sound effects, pause, and persistent totals. The runner is now a realistic rigged human adventurer with idle, run, and jump animations. The exported model is included locally with the game and cached for offline play. Its 44,920-triangle mesh and embedded textures make the initial download about 9 MB. The character was generated with [Ara 3D Gen](https://ara3dgen.com/) and is released under CC0; Three.js and its loader utilities are MIT licensed. The 3D runtime and all model-loading code are bundled locally, so gameplay does not rely on a CDN.
 

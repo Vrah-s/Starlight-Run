@@ -1,4 +1,5 @@
 import * as THREE from './vendor-three.module.js';
+import { GLTFLoader } from './GLTFLoader.js';
 
 const canvas = document.getElementById('game-canvas');
 const $ = id => document.getElementById(id);
@@ -99,15 +100,10 @@ function makeGround() {
     const shoulder = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 125), shoulderMat);
     shoulder.rotation.x = -Math.PI / 2; shoulder.position.set(side * 4.75, -.11, -52); scene.add(shoulder);
   }
-  // Lane dashes scroll in repeated rows to sell the runner's forward motion.
-  for (const x of [-1.4, 1.4]) for (let i = 0; i < 16; i++) {
-    const dash = box(.055, .025, 1.4, new THREE.MeshStandardMaterial({ color: 0xe4cba3, roughness: .95 }), scene, [x, -.055, -i * 5.2]);
-    moving.push({ kind: 'dash', mesh: dash, z: dash.position.z });
-  }
-  // Pebbles embedded along the track.
-  for (let i = 0; i < 18; i++) {
-    const pebble = new THREE.Mesh(new THREE.DodecahedronGeometry(.16 + Math.random() * .25, 0), i % 2 ? mats.stone : mats.soilLight);
-    pebble.position.set((Math.random() - .5) * 6.6, .02, -i * 4.4 - 3); pebble.scale.y = .45; scene.add(pebble);
+  // Small, irregular stones and leaf litter make the path feel like a trail.
+  for (let i = 0; i < 54; i++) {
+    const pebble = new THREE.Mesh(new THREE.IcosahedronGeometry(.11 + Math.random() * .2, 1), i % 3 ? mats.stone : mats.soilLight);
+    pebble.position.set((Math.random() - .5) * 7.8, .015, -Math.random() * 112); pebble.scale.set(1.25, .48, .85); scene.add(pebble);
     moving.push({ kind: 'pebble', mesh: pebble, z: pebble.position.z });
   }
 }
@@ -157,13 +153,16 @@ function makeLandmarks() {
     }
   }
   // Ancient trail gate beyond the first bend.
-  const ruin = new THREE.Group(); ruin.position.set(-8.5, 0, -35); scene.add(ruin);
+  const ruin = new THREE.Group(); ruin.position.set(-7.2, 0, -28); ruin.scale.setScalar(1.18); scene.add(ruin);
   const stone = new THREE.MeshStandardMaterial({ color: 0x777384, roughness: .96, flatShading: true });
   box(.55, 3.1, .65, stone, ruin, [-1.5, 1.55, 0]); box(.55, 3.1, .65, stone, ruin, [1.5, 1.55, 0]);
   box(3.5, .65, .7, stone, ruin, [0, 3.2, 0]); box(4.2, .3, .9, mats.stoneLight, ruin, [0, 3.62, 0]);
-  const fall = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 8), new THREE.MeshBasicMaterial({ color: 0x5dd2ef, transparent: true, opacity: .58, side: THREE.DoubleSide }));
-  fall.position.set(13, 4, -42); scene.add(fall);
-  const cliff = new THREE.Mesh(new THREE.DodecahedronGeometry(4, 1), mats.stone); cliff.position.set(13, 1, -43); cliff.scale.set(2.2, 1.35, 2); scene.add(cliff); fall.position.z = -39.8;
+  const waterfallGroup = new THREE.Group(); waterfallGroup.position.set(8.4, 0, -38); scene.add(waterfallGroup);
+  const cliff = new THREE.Mesh(new THREE.IcosahedronGeometry(4.5, 2), mats.stone); cliff.position.set(0, 2.2, -1); cliff.scale.set(1.25, 1.1, .9); waterfallGroup.add(cliff);
+  const waterMat = new THREE.MeshBasicMaterial({ color: 0x82e9ff, transparent: true, opacity: .72, side: THREE.DoubleSide, depthWrite: false });
+  const fall = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 8, 1, 12), waterMat); fall.position.set(0, 3.2, 2.7); waterfallGroup.add(fall);
+  const pool = new THREE.Mesh(new THREE.CircleGeometry(2.2, 32), new THREE.MeshBasicMaterial({ color: 0x49c9ec, transparent: true, opacity: .42, depthWrite: false }));
+  pool.rotation.x = -Math.PI / 2; pool.position.set(0, .06, 3.5); waterfallGroup.add(pool);
 }
 const scenery = [];
 function makeScenery() {
@@ -183,8 +182,8 @@ function makeScenery() {
     const plant = new THREE.Group(); plant.position.set(x, 0, z); scene.add(plant);
     const tuftCount = 2 + Math.floor(Math.random() * 2);
     for (let j = 0; j < tuftCount; j++) {
-      const blade = new THREE.Mesh(new THREE.ConeGeometry(.12 + Math.random() * .15, .5 + Math.random() * .55, 5), j % 2 ? mats.fern : mats.fernLight);
-      blade.position.set((Math.random() - .5) * .45, .2, (Math.random() - .5) * .38); blade.rotation.z = (Math.random() - .5) * .7; plant.add(blade);
+      const leaf = new THREE.Mesh(new THREE.SphereGeometry(.22 + Math.random() * .18, 10, 8), j % 2 ? mats.fern : mats.fernLight);
+      leaf.scale.set(.65, 1.5, .62); leaf.position.set((Math.random() - .5) * .55, .36, (Math.random() - .5) * .48); leaf.rotation.z = (Math.random() - .5) * .75; plant.add(leaf);
     }
     if (i % 4 === 0) { const bloom = new THREE.Mesh(new THREE.SphereGeometry(.12, 8, 6), i % 8 ? mats.flower : mats.coinBright); bloom.position.set(0, .45, 0); plant.add(bloom); }
     if (i % 3 === 0) { const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(.2 + Math.random() * .3, 1), mats.stone); stone.position.set((Math.random() - .5) * .8, .12, .25); stone.scale.y = .6; plant.add(stone); }
@@ -199,7 +198,8 @@ function makeScenery() {
 }
 function makeHero() {
   const root = new THREE.Group(); scene.add(root); root.position.set(0, 0, .5);
-  const torso = new THREE.Group(); torso.position.y = 1.4; root.add(torso);
+  const fallback = new THREE.Group(); root.add(fallback);
+  const torso = new THREE.Group(); torso.position.y = 1.4; fallback.add(torso);
   const jacket = new THREE.Mesh(new THREE.CapsuleGeometry(.49, .68, 5, 16), mats.blue); jacket.position.y = .05; torso.add(jacket);
   const packMaterial = new THREE.MeshStandardMaterial({ color: 0x986544, roughness: .93 });
   const backpack = new THREE.Mesh(new THREE.SphereGeometry(.46, 18, 14), packMaterial); backpack.scale.set(.88, 1.05, .78); backpack.position.set(0, .1, .42); torso.add(backpack);
@@ -224,7 +224,7 @@ function makeHero() {
   const legs = [];
   const knees = [];
   for (const side of [-1, 1]) {
-    const pivot = new THREE.Group(); pivot.position.set(side * .235, 1.02, 0); root.add(pivot);
+    const pivot = new THREE.Group(); pivot.position.set(side * .235, 1.02, 0); fallback.add(pivot);
     const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(.19, .43, 4, 12), mats.pants); thigh.position.y = -.28; pivot.add(thigh);
     const knee = new THREE.Group(); knee.position.y = -.54; pivot.add(knee);
     const shin = new THREE.Mesh(new THREE.CapsuleGeometry(.16, .48, 4, 12), mats.pants); shin.position.y = -.29; knee.add(shin);
@@ -233,7 +233,44 @@ function makeHero() {
   }
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(.88, 20), new THREE.MeshBasicMaterial({ color: 0x171b2e, transparent: true, opacity: .32, depthWrite: false }));
   shadow.rotation.x = -Math.PI / 2; shadow.position.y = .025; root.add(shadow);
-  return { root, torso, head, arms, legs, knees, shadow };
+  return { root, fallback, torso, head, arms, legs, knees, shadow, mixer: null, actions: null, currentAction: null };
+}
+function loadHumanHero() {
+  const loader = new GLTFLoader();
+  loader.load('./assets/athletic-runner.glb', gltf => {
+    const avatar = new THREE.Group();
+    const model = gltf.scene;
+    const bounds = new THREE.Box3().setFromObject(model);
+    const size = bounds.getSize(new THREE.Vector3());
+    const scale = 3.5 / Math.max(size.y, .01);
+    model.scale.setScalar(scale);
+    model.position.set(-(bounds.min.x + bounds.max.x) * .5 * scale, -bounds.min.y * scale, 0);
+    model.rotation.y = Math.PI;
+    avatar.add(model);
+    hero.root.add(avatar);
+    hero.fallback.visible = false;
+    hero.character = avatar;
+    hero.mixer = new THREE.AnimationMixer(model);
+    hero.actions = new Map();
+    for (const clip of gltf.animations) {
+      const action = hero.mixer.clipAction(clip);
+      hero.actions.set(clip.name.toLowerCase(), action);
+    }
+    hero.currentAction = null;
+    setHeroAction('idle', true);
+  }, undefined, error => console.warn('Human model unavailable; using built-in runner.', error));
+}
+function setHeroAction(kind, loop = true) {
+  if (!hero.actions) return;
+  const aliases = { run: ['run'], idle: ['idle'], jump: ['running jump', 'jump', 'jump start'], slide: ['crouch idle'] };
+  const action = (aliases[kind] || [kind]).map(name => hero.actions.get(name)).find(Boolean);
+  if (!action || action === hero.currentAction) return;
+  const previous = hero.currentAction;
+  action.reset(); action.enabled = true; action.clampWhenFinished = !loop;
+  action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1);
+  action.fadeIn(.12).play();
+  if (previous) previous.fadeOut(.12);
+  hero.currentAction = action;
 }
 function addEntity(mesh, kind, laneIndex, z, extra = {}) {
   mesh.position.x = LANES[laneIndex]; mesh.position.z = z; scene.add(mesh);
@@ -276,6 +313,7 @@ function removeEntity(entity) {
 
 makeSky(); makeGround(); makeLandmarks(); makeScenery();
 const hero = makeHero();
+loadHumanHero();
 const dynamicEntities = [];
 function spawnPattern() {
   const blocked = Math.floor(Math.random() * 3);
@@ -305,7 +343,7 @@ function startRun() {
   jumpTimer = 0; slideTimer = 0; invulnerableTimer = 0; spawnTimer = .9; elapsed = 0; worldDistance = 0; hudCache = {};
   for (const entity of [...dynamicEntities]) removeEntity(entity);
   moving.splice(0, moving.length, ...moving.filter(entity => !dynamicEntities.includes(entity)));
-  dynamicEntities.length = 0; hero.root.position.set(0, 0, .5); hero.root.scale.set(1, 1, 1);
+  dynamicEntities.length = 0; hero.root.position.set(0, 0, .5); hero.root.scale.set(1, 1, 1); if (hero.actions) setHeroAction('run', true);
   $('start-screen').classList.add('hidden'); $('pause-screen').classList.add('hidden'); $('result-screen').classList.add('hidden');
   $('pause-button').classList.remove('hidden'); $('swipe-hint').classList.remove('hidden'); updateHud(); playSound('start');
   setTimeout(() => { if (phase === 'running') $('swipe-hint').classList.add('hidden'); }, 4300);
@@ -326,6 +364,7 @@ function jump() { if (phase === 'running' && jumpTimer <= 0 && slideTimer <= 0) 
 function slide() { if (phase === 'running' && slideTimer <= 0 && jumpTimer <= 0) { slideTimer = .66; playSound('move'); } }
 function update(delta) {
   elapsed += delta;
+  if (hero.mixer) hero.mixer.update(delta);
   const movingNow = phase === 'running';
   if (!movingNow) { animateHero(0); return; }
   const speed = Math.min(27, 16 + score / 155);
@@ -341,7 +380,7 @@ function update(delta) {
   for (const entity of moving) {
     if (entity.kind === 'dash' || entity.kind === 'pebble') {
       entity.mesh.position.z += speed * delta;
-      if (entity.mesh.position.z > 8) entity.mesh.position.z -= entity.kind === 'dash' ? 83.2 : 79.2;
+      if (entity.mesh.position.z > 8) entity.mesh.position.z -= entity.kind === 'dash' ? 83.2 : 112;
     } else if (entity.kind === 'crystal') {
       entity.mesh.position.z += speed * delta; entity.mesh.rotation.y += delta * .35;
       entity.mesh.position.y = entity.baseY + Math.sin(elapsed * 1.4 + entity.z) * .16;
@@ -377,6 +416,16 @@ function update(delta) {
 }
 function animateHero(speed) {
   const run = phase === 'running';
+  if (hero.mixer) {
+    const jumping = run && jumpTimer > 0;
+    const sliding = run && slideTimer > 0;
+    setHeroAction(jumping ? 'jump' : sliding ? 'slide' : run ? 'run' : 'idle', !(jumping || sliding));
+    const beat = elapsed * (10 + Math.min(6, speed * .25));
+    const jumpHeight = jumping ? Math.sin((1 - jumpTimer / .78) * Math.PI) * 1.35 : 0;
+    hero.root.position.y += ((jumpHeight + (run && !jumping && !sliding ? Math.abs(Math.sin(beat)) * .035 : 0)) - hero.root.position.y) * .42;
+    hero.root.scale.y = THREE.MathUtils.lerp(hero.root.scale.y, sliding ? .72 : 1, .22);
+    return;
+  }
   const beat = elapsed * (10 + Math.min(6, speed * .25));
   const jumping = run && jumpTimer > 0;
   const sliding = run && slideTimer > 0;
