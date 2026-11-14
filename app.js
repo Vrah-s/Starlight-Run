@@ -36,7 +36,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.08;
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x9d91c6, 37, 112);
+scene.fog = new THREE.Fog(0x75899a, 40, 118);
 const camera = new THREE.PerspectiveCamera(59, gameWidth / gameHeight, 0.1, 140);
 camera.position.set(0, 6.1, 8.7);
 camera.lookAt(0, 1.3, -17);
@@ -59,9 +59,9 @@ material('star', 0x52ffd0, .24, { emissive: 0x08ad86, emissiveIntensity: .55 });
 material('rock', 0x676775); material('rockLit', 0x93909b); material('leaf', 0x345f42);
 material('fern', 0x497e4e); material('fernLight', 0x78a75a); material('flower', 0xe2a9dc);
 
-scene.add(new THREE.HemisphereLight(0xc9dcff, 0x675040, 2.0));
-const sun = new THREE.DirectionalLight(0xffe5c2, 3.1); sun.position.set(-8, 15, 7); scene.add(sun);
-const moonLight = new THREE.DirectionalLight(0x879dff, 1.2); moonLight.position.set(8, 10, -20); scene.add(moonLight);
+scene.add(new THREE.HemisphereLight(0xc6d9e8, 0x35453d, 1.55));
+const sun = new THREE.DirectionalLight(0xffdbbd, 2.15); sun.position.set(-12, 17, 6); scene.add(sun);
+const moonLight = new THREE.DirectionalLight(0x9fc7e8, 1.05); moonLight.position.set(8, 13, -22); scene.add(moonLight);
 
 function box(width, height, depth, mat, parent, position = [0, 0, 0]) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), mat);
@@ -73,10 +73,10 @@ function makeSky() {
   const skyCanvas = document.createElement('canvas'); skyCanvas.width = 1536; skyCanvas.height = 768;
   const skyCtx = skyCanvas.getContext('2d');
   const skyGrad = skyCtx.createLinearGradient(0, 0, 0, 768);
-  skyGrad.addColorStop(0, '#11163f'); skyGrad.addColorStop(.42, '#343577'); skyGrad.addColorStop(.76, '#9a69a7'); skyGrad.addColorStop(1, '#f1a7c4');
+  skyGrad.addColorStop(0, '#101a32'); skyGrad.addColorStop(.42, '#263c55'); skyGrad.addColorStop(.76, '#71818b'); skyGrad.addColorStop(1, '#d1a58e');
   skyCtx.fillStyle = skyGrad; skyCtx.fillRect(0, 0, 1536, 768);
   const glow = (x, y, rx, ry, color) => { const g = skyCtx.createRadialGradient(x, y, 0, x, y, rx); g.addColorStop(0, color); g.addColorStop(1, 'transparent'); skyCtx.save(); skyCtx.scale(1, ry / rx); skyCtx.fillStyle = g; skyCtx.fillRect(x - rx, y / (ry / rx) - rx, rx * 2, rx * 2); skyCtx.restore(); };
-  glow(850, 305, 420, 165, 'rgba(224,75,208,.54)'); glow(965, 325, 300, 120, 'rgba(63,219,241,.48)'); glow(700, 360, 235, 100, 'rgba(117,101,245,.46)'); glow(490, 265, 225, 95, 'rgba(169,72,196,.35)');
+  glow(820, 320, 430, 155, 'rgba(129,166,193,.18)'); glow(1010, 330, 310, 118, 'rgba(174,194,198,.12)'); glow(570, 345, 250, 92, 'rgba(163,148,178,.12)');
   for (let i = 0; i < 1100; i++) { const x = Math.random() * 1536, y = Math.random() * 520, r = Math.random() < .08 ? 1.8 : .45 + Math.random() * .8; skyCtx.fillStyle = `rgba(225,239,255,${.25 + Math.random() * .7})`; skyCtx.beginPath(); skyCtx.arc(x, y, r, 0, Math.PI * 2); skyCtx.fill(); }
   const skyTexture = new THREE.CanvasTexture(skyCanvas); skyTexture.colorSpace = THREE.SRGBColorSpace;
   const dome = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ map: skyTexture, side: THREE.BackSide, fog: false }));
@@ -97,41 +97,104 @@ function makeSky() {
   }
 }
 function makeGround() {
-  // Procedural soil grain keeps the trail from reading as a flat brown strip.
-  const texCanvas = document.createElement('canvas'); texCanvas.width = texCanvas.height = 256;
-  const ctx = texCanvas.getContext('2d'); ctx.fillStyle = '#94704f'; ctx.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 5200; i++) { const v = 70 + Math.random() * 90; ctx.fillStyle = `rgba(${v + 30},${v},${v - 25},${Math.random() * .24})`; ctx.beginPath(); ctx.ellipse(Math.random() * 256, Math.random() * 256, 1 + Math.random() * 4, .7 + Math.random() * 2.4, Math.random() * 3, 0, Math.PI * 2); ctx.fill(); }
-  const soilTexture = new THREE.CanvasTexture(texCanvas); soilTexture.colorSpace = THREE.SRGBColorSpace; soilTexture.wrapS = soilTexture.wrapT = THREE.RepeatWrapping; soilTexture.repeat.set(2, 18);
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(130, 150), new THREE.MeshStandardMaterial({ color: 0x395b43, roughness: 1 }));
-  ground.rotation.x = -Math.PI / 2; ground.position.set(0, -.18, -50); scene.add(ground);
-  const road = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 125), new THREE.MeshStandardMaterial({ map: soilTexture, roughness: 1, color: 0xc9a47e }));
-  road.rotation.x = -Math.PI / 2; road.position.set(0, -.08, -52); scene.add(road);
-  const shoulderMat = new THREE.MeshStandardMaterial({ color: 0x76614f, roughness: 1 });
-  for (const side of [-1, 1]) {
-    const shoulder = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 125), shoulderMat);
-    shoulder.rotation.x = -Math.PI / 2; shoulder.position.set(side * 4.75, -.11, -52); scene.add(shoulder);
+  // A fine, layered soil map breaks up the broad running trail without large textures.
+  const texCanvas = document.createElement('canvas'); texCanvas.width = texCanvas.height = 512;
+  const ctx = texCanvas.getContext('2d');
+  const pixels = ctx.createImageData(512, 512);
+  for (let y = 0; y < 512; y++) for (let x = 0; x < 512; x++) {
+    const coarse = Math.sin(x * .025 + Math.sin(y * .018) * 2.1) * 7 + Math.sin(y * .041 + x * .009) * 5;
+    const grain = Math.random() * 25 - 12;
+    const fleck = Math.random() < .055 ? (Math.random() < .5 ? -24 : 23) : 0;
+    const i = (y * 512 + x) * 4, value = Math.max(0, Math.min(255, 116 + coarse + grain + fleck));
+    pixels.data[i] = value + 17; pixels.data[i + 1] = value + 2; pixels.data[i + 2] = value - 14; pixels.data[i + 3] = 255;
   }
-  // Small, irregular stones and leaf litter make the path feel like a trail.
-  for (let i = 0; i < 54; i++) {
-    const pebble = new THREE.Mesh(new THREE.IcosahedronGeometry(.11 + Math.random() * .2, 1), i % 3 ? mats.stone : mats.soilLight);
-    pebble.position.set((Math.random() - .5) * 7.8, .015, -Math.random() * 112); pebble.scale.set(1.25, .48, .85); scene.add(pebble);
+  ctx.putImageData(pixels, 0, 0);
+  // Scattered gravel and leaf marks add scale cues on the trail.
+  for (let i = 0; i < 430; i++) {
+    const leaf = Math.random() < .45, hue = leaf ? ['#65543d', '#88714a', '#536044'][i % 3] : ['#b4a28b', '#625b54', '#d0b38d'][i % 3];
+    ctx.fillStyle = hue + (leaf ? '99' : '8f'); ctx.beginPath();
+    ctx.ellipse(Math.random() * 512, Math.random() * 512, leaf ? 1.5 + Math.random() * 4 : 1 + Math.random() * 3, .7 + Math.random() * 2, Math.random() * Math.PI, 0, Math.PI * 2); ctx.fill();
+  }
+  const soilTexture = new THREE.CanvasTexture(texCanvas); soilTexture.colorSpace = THREE.SRGBColorSpace; soilTexture.wrapS = soilTexture.wrapT = THREE.RepeatWrapping; soilTexture.repeat.set(1.5, 23);
+
+  // Raised forest banks and shallow dips create a more natural trail cut.
+  const terrainGeo = new THREE.PlaneGeometry(130, 150, 52, 76);
+  const terrainPos = terrainGeo.attributes.position, terrainColors = [];
+  for (let i = 0; i < terrainPos.count; i++) {
+    const x = terrainPos.getX(i), z = terrainPos.getY(i);
+    const edge = THREE.MathUtils.smoothstep(Math.abs(x), 3.9, 16);
+    const undulation = Math.sin(z * .21 + x * .31) * .16 + Math.sin(z * .073 - x * .17) * .26;
+    const rise = edge * (1.05 + .5 * Math.sin(z * .11 + x * .06) + undulation);
+    terrainPos.setZ(i, Math.max(-.23, rise));
+    const variation = .91 + .065 * Math.sin(z * .16 + x * .27) + Math.random() * .07;
+    const c = new THREE.Color().setRGB(.19 * variation, .30 * variation, .20 * variation);
+    terrainColors.push(c.r, c.g, c.b);
+  }
+  terrainGeo.setAttribute('color', new THREE.Float32BufferAttribute(terrainColors, 3)); terrainGeo.computeVertexNormals();
+  const ground = new THREE.Mesh(terrainGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
+  ground.rotation.x = -Math.PI / 2; ground.position.set(0, -.16, -50); scene.add(ground);
+  const road = new THREE.Mesh(new THREE.PlaneGeometry(8.4, 128), new THREE.MeshStandardMaterial({ map: soilTexture, roughness: 1, color: 0xd0b69a }));
+  road.rotation.x = -Math.PI / 2; road.position.set(0, -.075, -52); scene.add(road);
+  // Narrow damp shoulders blend the compacted path into the forest floor.
+  const shoulderMat = new THREE.MeshStandardMaterial({ color: 0x695943, roughness: 1 });
+  for (const side of [-1, 1]) {
+    const shoulder = new THREE.Mesh(new THREE.PlaneGeometry(1.25, 128), shoulderMat);
+    shoulder.rotation.x = -Math.PI / 2; shoulder.position.set(side * 4.72, -.105, -52); scene.add(shoulder);
+  }
+  // Small, irregular stones and leaves pass beneath the runner with the trail.
+  for (let i = 0; i < 68; i++) {
+    const onTrail = i % 4 === 0;
+    const pebble = new THREE.Mesh(new THREE.IcosahedronGeometry(.08 + Math.random() * .18, 1), i % 3 ? mats.stone : mats.soilLight);
+    pebble.position.set(onTrail ? (Math.random() - .5) * 7.6 : (Math.random() < .5 ? -1 : 1) * (4.5 + Math.random() * 5), .018, -Math.random() * 116);
+    pebble.scale.set(1.15 + Math.random() * .55, .35 + Math.random() * .35, .8 + Math.random() * .4); pebble.rotation.set(Math.random(), Math.random() * 3, Math.random()); scene.add(pebble);
     moving.push({ kind: 'pebble', mesh: pebble, z: pebble.position.z });
+  }
+  const leafMats = [0x736247, 0x4a5943, 0x9a714b].map(color => new THREE.MeshStandardMaterial({ color, roughness: 1, side: THREE.DoubleSide }));
+  for (let i = 0; i < 36; i++) {
+    const leaf = new THREE.Mesh(new THREE.PlaneGeometry(.12 + Math.random() * .12, .2 + Math.random() * .18), leafMats[i % leafMats.length]);
+    leaf.rotation.set(-Math.PI / 2, Math.random() * Math.PI, (Math.random() - .5) * .22);
+    leaf.position.set((Math.random() - .5) * 8, .014, -Math.random() * 112); scene.add(leaf);
+    moving.push({ kind: 'pebble', mesh: leaf, z: leaf.position.z });
   }
 }
 function makeTree(x, z, scale = 1, broadleaf = false) {
   const tree = new THREE.Group(); tree.position.set(x, 0, z); tree.scale.setScalar(scale); scene.add(tree);
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.15, .27, 2.0, 6), mats.bark); trunk.position.y = .95; tree.add(trunk);
+  const height = broadleaf ? 4.2 : 5.3;
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.12, .29, height, 8, 3), mats.bark);
+  trunk.position.y = height * .5; tree.add(trunk);
+  // Subtle exposed roots make trunks feel seated in the uneven ground.
+  for (let i = 0; i < 4; i++) {
+    const angle = i * Math.PI / 2 + Math.random() * .45;
+    const root = new THREE.Mesh(new THREE.CylinderGeometry(.035, .12, .9, 5), mats.bark);
+    root.position.set(Math.cos(angle) * .27, .13, Math.sin(angle) * .27); root.rotation.z = Math.cos(angle) * .48; root.rotation.x = Math.sin(angle) * .48; tree.add(root);
+  }
   if (broadleaf) {
-    const crownMat = [mats.pineB, mats.pineC, mats.leaf][Math.floor(Math.random() * 3)];
-    for (let i = 0; i < 6; i++) {
-      const crown = new THREE.Mesh(new THREE.SphereGeometry(.74 + Math.random() * .48, 12, 10), i % 3 ? crownMat : mats.pineC);
-      crown.position.set((Math.random() - .5) * 1.9, 2.15 + Math.random() * .95, (Math.random() - .5) * 1.4); crown.scale.set(1.1, .78 + Math.random() * .3, .92); tree.add(crown);
+    for (let i = 0; i < 5; i++) {
+      const angle = i * Math.PI * .4 + Math.random() * .25, length = 1.25 + Math.random() * .8;
+      const branch = new THREE.Mesh(new THREE.CylinderGeometry(.035, .11, length, 6), mats.barkLight);
+      branch.position.set(Math.cos(angle) * .55, 2.2 + Math.random() * .65, Math.sin(angle) * .48);
+      branch.rotation.z = Math.cos(angle) * -.58; branch.rotation.x = Math.sin(angle) * .58; tree.add(branch);
+    }
+    for (let i = 0; i < 8; i++) {
+      const crownMat = [mats.pineB, mats.pineC, mats.leaf][Math.floor(Math.random() * 3)];
+      const crown = new THREE.Mesh(new THREE.SphereGeometry(.72 + Math.random() * .52, 11, 9), crownMat);
+      crown.position.set((Math.random() - .5) * 2.1, 2.8 + Math.random() * 1.2, (Math.random() - .5) * 1.65);
+      crown.scale.set(1.15, .78 + Math.random() * .42, .95); tree.add(crown);
     }
   } else {
     const foliage = [mats.pineA, mats.pineB, mats.pineC][Math.floor(Math.random() * 3)];
-    for (let i = 0; i < 4; i++) {
-      const cone = new THREE.Mesh(new THREE.ConeGeometry(1.05 - i * .12, 1.7, 12, 1), foliage);
-      cone.position.y = 1.6 + i * .68; tree.add(cone);
+    for (let tier = 0; tier < 4; tier++) {
+      const radius = 1.15 - tier * .19, tierHeight = 2.0 - tier * .1;
+      const crownGeo = new THREE.ConeGeometry(radius, tierHeight, 10, 3);
+      const pos = crownGeo.attributes.position;
+      for (let v = 0; v < pos.count; v++) {
+        const y = pos.getY(v), angle = Math.atan2(pos.getZ(v), pos.getX(v));
+        const wobble = 1 + .075 * Math.sin(angle * 3 + tier * 1.7) + .035 * Math.cos(angle * 7 + y * 2);
+        pos.setX(v, pos.getX(v) * wobble); pos.setZ(v, pos.getZ(v) * wobble);
+      }
+      crownGeo.computeVertexNormals();
+      const crown = new THREE.Mesh(crownGeo, tier % 2 ? mats.pineB : foliage);
+      crown.position.y = 1.45 + tier * .82; crown.rotation.y = Math.random() * .4; tree.add(crown);
     }
   }
   return tree;
@@ -139,14 +202,14 @@ function makeTree(x, z, scale = 1, broadleaf = false) {
 function makeMountain(x, z, height, width, color) {
   const mountain = new THREE.Group(); mountain.position.set(x, 0, z); scene.add(mountain);
   const rings = 18, segments = 36, verts = [], colors = [], indices = [];
-  const peakColor = new THREE.Color(0xc6cfe5), baseColor = new THREE.Color(color);
+  const peakColor = new THREE.Color(0xe5e9e4), baseColor = new THREE.Color(color);
   for (let r = 0; r <= rings; r++) {
     const t = r / rings, taper = Math.sin(Math.PI * t) ** .68, y = t * height;
     for (let s = 0; s <= segments; s++) {
       const angle = s / segments * Math.PI * 2, wobble = 1 + .085 * Math.sin(angle * 5 + x) + .04 * Math.sin(angle * 9 + z);
       const radius = width * taper * wobble;
       verts.push(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
-      const snowMix = THREE.MathUtils.smoothstep(t, .77 + .035 * Math.sin(angle * 4), .94);
+      const snowMix = THREE.MathUtils.smoothstep(t + .025 * Math.sin(angle * 5 + x), .83 + .045 * Math.sin(angle * 3), .97);
       const c = baseColor.clone().lerp(peakColor, snowMix); colors.push(c.r, c.g, c.b);
       if (r < rings && s < segments) { const a = r * (segments + 1) + s, b = a + segments + 1; indices.push(a, b, a + 1, b, b + 1, a + 1); }
     }
@@ -156,7 +219,7 @@ function makeMountain(x, z, height, width, color) {
   return mountain;
 }
 function makeLandmarks() {
-  const ridgeColors = [0x777aa5, 0x535e88, 0x344a6f];
+  const ridgeColors = [0x687a82, 0x4e6674, 0x344e60];
   for (let row = 0; row < 3; row++) {
     for (let i = -2; i <= 2; i++) {
       const x = i * 12 + (row % 2) * 5;
@@ -179,8 +242,8 @@ const scenery = [];
 function makeScenery() {
   for (let side of [-1, 1]) {
     for (let i = 0; i < 19; i++) {
-      const scale = .8 + Math.random() * 1.2;
-      const x = side * (5.4 + Math.random() * 8.5);
+      const scale = .72 + Math.random() * 1.55;
+      const x = side * (5.8 + Math.random() * 10.5);
       const z = -i * 3.0 - Math.random() * 2.5;
       const tree = makeTree(x, z, scale, Math.random() < .2);
       scenery.push(tree);
@@ -444,7 +507,7 @@ function update(delta) {
   for (const entity of remove) { removeEntity(entity); dynamicEntities.splice(dynamicEntities.indexOf(entity), 1); moving.splice(moving.indexOf(entity), 1); }
   for (const tree of scenery) {
     tree.position.z += speed * delta * .42;
-    tree.rotation.z = Math.sin(elapsed * .8 + tree.position.x * .7) * .018;
+    tree.rotation.z = Math.sin(elapsed * .55 + tree.position.x * .7) * .012;
     if (tree.position.z > 14) tree.position.z -= 83;
   }
   animateHero(speed);
