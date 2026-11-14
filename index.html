@@ -7,11 +7,11 @@
   <meta name="description" content="Run a starlit forest trail, dodge hazards, and collect coins in this endless mobile runner.">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=3">
   <title>Starlight Run</title>
 </head>
 <body>
-  <main id="game" class="game-shell">
+  <main id="game" class="game-shell menu-mode">
     <canvas id="game-canvas" aria-label="Starlight Run endless runner"></canvas>
     <div class="top-hud">
       <div class="score-box"><span class="hud-caption">SCORE</span><strong id="score">0</strong></div>
@@ -22,19 +22,34 @@
     <div class="lives-box" id="lives" aria-label="Three lives">♥ ♥ ♥</div>
     <div class="swipe-hint" id="swipe-hint"><span>SWIPE</span><b>←</b><b>↑</b><b>↓</b><b>→</b><small>change lane · jump · slide</small></div>
 
-    <section class="screen-card" id="start-screen">
-      <div class="title-spark">✦</div><p class="screen-kicker">A STARRY LITTLE ADVENTURE</p>
-      <h1>STARLIGHT<br><em>RUN</em></h1>
-      <p class="screen-copy">Race through a moonlit forest, dodge the trail’s surprises, and collect glowing coins.</p>
-      <div class="how-to"><span>← → <small>MOVE</small></span><span>↑ <small>JUMP</small></span><span>↓ <small>SLIDE</small></span></div>
-      <button class="main-button" id="start-button">START RUN <span>→</span></button>
-      <p class="screen-foot">SWIPE TO PLAY · ENDLESS RUN</p>
+    <section class="screen-card menu-card" id="start-screen">
+      <div id="home-view">
+        <div class="title-spark">✦</div><p class="screen-kicker">YOUR STAR TRAIL</p>
+        <h1>STARLIGHT<br><em>RUN</em></h1>
+        <div class="profile-strip"><span id="menu-level">LEVEL 1</span><span id="menu-xp">0 XP</span><span id="menu-wallet">0 COINS</span></div>
+        <button class="main-button" id="start-button">START RUN <span>→</span></button>
+        <div class="menu-grid">
+          <button class="menu-tile" data-page="characters"><b>🧭</b><span>RUNNER</span></button>
+          <button class="menu-tile" data-page="missions"><b>✦</b><span>MISSIONS</span></button>
+          <button class="menu-tile" data-page="log"><b>▤</b><span>PLAYER LOG</span></button>
+          <button class="menu-tile" data-page="shop"><b>◈</b><span>TRAIL SHOP</span></button>
+          <button class="menu-tile menu-settings" data-page="settings"><b>⚙</b><span>SETTINGS</span></button>
+        </div>
+        <p class="screen-foot">SWIPE TO PLAY · YOUR PROGRESS SAVES ON THIS DEVICE</p>
+      </div>
+      <div id="feature-view" class="hidden">
+        <button class="back-button" id="feature-back">← MAIN MENU</button>
+        <p class="screen-kicker" id="feature-kicker">STARRY LITTLE ADVENTURE</p>
+        <h2 id="feature-title">RUNNER</h2>
+        <div id="feature-content"></div>
+      </div>
     </section>
 
     <section class="screen-card pause-card hidden" id="pause-screen">
       <div class="title-spark">☾</div><p class="screen-kicker">CATCH YOUR BREATH</p><h2>PAUSED</h2>
       <button class="main-button" id="resume-button">KEEP RUNNING <span>→</span></button>
       <button class="secondary-button" id="pause-restart">START A NEW RUN</button>
+      <button class="secondary-button" id="pause-menu">MAIN MENU</button>
     </section>
 
     <section class="screen-card result-card hidden" id="result-screen">
@@ -42,7 +57,9 @@
       <div class="result-score"><span>YOUR SCORE</span><strong id="final-score">0</strong></div>
       <p class="best-score">BEST RUN <b id="best-score">0</b></p>
       <p class="run-coins">COINS COLLECTED <b id="final-coins">0</b></p>
+      <p class="run-coins">XP EARNED <b id="final-xp">0</b></p>
       <button class="main-button" id="restart-button">RUN AGAIN <span>↻</span></button>
+      <button class="secondary-button" id="result-menu">MAIN MENU</button>
     </section>
     <button class="pause-button hidden" id="pause-button" aria-label="Pause game">Ⅱ</button>
     <div class="landscape-message hidden" id="landscape-message"><span>↻</span><strong>Turn your phone upright</strong><small>Starlight Run is made for portrait screens.</small></div>
@@ -62,6 +79,6 @@
     window.addEventListener('unhandledrejection', event => showStartupError(event.reason?.message || 'a game resource failed to load'));
     setTimeout(() => { if (!window.__starlightReady) showStartupError('the game script did not load'); }, 9000);
   </script>
-  <script type="module" src="app.js?v=9"></script>
+  <script type="module" src="app.js?v=11"></script>
 </body>
 </html>
