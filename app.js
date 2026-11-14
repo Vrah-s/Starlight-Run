@@ -6,14 +6,25 @@ const $ = id => document.getElementById(id);
 const SAVE_KEY = 'starlight-run-save-v1';
 const LANES = [-2.25, 0, 2.25];
 const CONTACT_Z = 0.1;
-const freshSave = { best: 0, totalCoins: 0 };
+const freshSave = { best: 0, totalCoins: 0, walletCoins: 0, xp: 0, totalXp: 0, runs: 0, totalDistance: 0, totalPlaySeconds: 0, runLog: [], unlockedCharacters: ['trail-scout'], selectedCharacter: 'trail-scout', claimedMissions: [], soundOn: true };
+const CHARACTERS = [
+  { id: 'trail-scout', name: 'Trail Scout', title: 'The First Adventurer', ability: 'Balanced runner · 3 starting lives', cost: null, palette: { 'Tank top': 0x3c83a7, 'Cargo shorts': 0x303d61, 'Backpack': 0x8d573a, 'Shoes': 0x342721 } },
+  { id: 'ember-nomad', name: 'Ember Nomad', title: 'Heat-tested trailblazer', ability: '+1 starting life', cost: { coins: 1800 }, palette: { 'Tank top': 0xc25c3e, 'Cargo shorts': 0x52402f, 'Backpack': 0x9b572d, 'Shoes': 0x3b2822 } },
+  { id: 'moon-warden', name: 'Moon Warden', title: 'Guardian of the star path', ability: '+1 starting life', cost: { xp: 1200 }, palette: { 'Tank top': 0x655da8, 'Cargo shorts': 0x344269, 'Backpack': 0x443c75, 'Shoes': 0x252644 } },
+  { id: 'dawn-runner', name: 'Dawn Runner', title: 'Earned through time on the trail', ability: '+1 starting life', cost: { minutes: 120 }, palette: { 'Tank top': 0xd79d43, 'Cargo shorts': 0x665238, 'Backpack': 0xa96e30, 'Shoes': 0x3b3022 } }
+];
+const MISSIONS = [
+  { id: 'runs-5', name: 'Find Your Pace', detail: 'Finish 5 runs', stat: 'runs', goal: 5, coins: 120, xp: 90 },
+  { id: 'coins-80', name: 'Star Collector', detail: 'Collect 80 coins over your runs', stat: 'totalCoins', goal: 80, coins: 160, xp: 120 },
+  { id: 'distance-2500', name: 'Into the Valley', detail: 'Travel 2,500 meters', stat: 'totalDistance', goal: 2500, coins: 220, xp: 180 }
+];
 let save = readSave();
 let phase = 'ready';
 let score = 0, runCoins = 0, lives = 3;
 let lane = 1, targetLane = 1;
 let jumpTimer = 0, slideTimer = 0, invulnerableTimer = 0;
-let spawnTimer = 0, elapsed = 0, worldDistance = 0, lastFrame = 0;
-let soundOn = true, audioContext, swipeStart = null, hudCache = {};
+let spawnTimer = 0, elapsed = 0, runTime = 0, worldDistance = 0, lastFrame = 0, earnedXp = 0;
+let soundOn = save.soundOn, audioContext, swipeStart = null, hudCache = {};
 let gameWidth = innerWidth, gameHeight = innerHeight;
 const moving = [];
 
@@ -257,8 +268,21 @@ function loadHumanHero() {
       hero.actions.set(clip.name.toLowerCase(), action);
     }
     hero.currentAction = null;
+    applyCharacterLook(save.selectedCharacter);
     setHeroAction('idle', true);
   }, undefined, error => console.warn('Human model unavailable; using built-in runner.', error));
+}
+function applyCharacterLook(characterId) {
+  const character = CHARACTERS.find(item => item.id === characterId) || CHARACTERS[0];
+  if (!hero.character) return;
+  hero.character.traverse(node => {
+    if (!node.isMesh) return;
+    const recolor = material => {
+      const tint = character.palette[material.name];
+      if (tint !== undefined) { material.color.setHex(tint); material.needsUpdate = true; }
+    };
+    if (Array.isArray(node.material)) node.material.forEach(recolor); else if (node.material) recolor(node.material);
+  });
 }
 function setHeroAction(kind, loop = true) {
   if (!hero.actions) return;
@@ -314,6 +338,7 @@ function removeEntity(entity) {
 makeSky(); makeGround(); makeLandmarks(); makeScenery();
 const hero = makeHero();
 loadHumanHero();
+refreshMenuProfile();
 const dynamicEntities = [];
 function spawnPattern() {
   const blocked = Math.floor(Math.random() * 3);
@@ -339,20 +364,34 @@ function resize() {
   camera.aspect = gameWidth / gameHeight; camera.updateProjectionMatrix();
 }
 function startRun() {
-  requestFullscreen(); phase = 'running'; score = 0; runCoins = 0; lives = 3; lane = 1; targetLane = 1;
+  if (phase === 'paused') endRun();
+  $('game').classList.remove('menu-mode');
+  requestFullscreen(); phase = 'running'; score = 0; runCoins = 0; runTime = 0; earnedXp = 0; lives = 3 + (CHARACTERS.find(item => item.id === save.selectedCharacter)?.ability.includes('+1') ? 1 : 0); lane = 1; targetLane = 1;
   jumpTimer = 0; slideTimer = 0; invulnerableTimer = 0; spawnTimer = .9; elapsed = 0; worldDistance = 0; hudCache = {};
   for (const entity of [...dynamicEntities]) removeEntity(entity);
   moving.splice(0, moving.length, ...moving.filter(entity => !dynamicEntities.includes(entity)));
   dynamicEntities.length = 0; hero.root.position.set(0, 0, .5); hero.root.scale.set(1, 1, 1); if (hero.actions) setHeroAction('run', true);
-  $('start-screen').classList.add('hidden'); $('pause-screen').classList.add('hidden'); $('result-screen').classList.add('hidden');
+  $('start-screen').classList.add('hidden'); $('pause-screen').classList.add('hidden'); $('result-screen').classList.add('hidden'); $('feature-view').classList.add('hidden'); $('home-view').classList.remove('hidden');
   $('pause-button').classList.remove('hidden'); $('swipe-hint').classList.remove('hidden'); updateHud(); playSound('start');
   setTimeout(() => { if (phase === 'running') $('swipe-hint').classList.add('hidden'); }, 4300);
 }
 function pauseRun() { if (phase !== 'running') return; phase = 'paused'; $('pause-screen').classList.remove('hidden'); $('pause-button').classList.add('hidden'); }
 function resumeRun() { if (phase !== 'paused') return; phase = 'running'; lastFrame = performance.now(); $('pause-screen').classList.add('hidden'); $('pause-button').classList.remove('hidden'); }
 function endRun() {
-  phase = 'gameover'; save.best = Math.max(save.best, Math.floor(score)); persist();
-  $('pause-button').classList.add('hidden'); $('final-score').textContent = Math.floor(score); $('best-score').textContent = save.best; $('final-coins').textContent = runCoins; $('result-screen').classList.remove('hidden');
+  if (phase === 'gameover') return;
+  phase = 'gameover';
+  save.best = Math.max(save.best, Math.floor(score));
+  save.runs += 1; save.totalDistance += Math.floor(worldDistance); save.totalPlaySeconds += Math.floor(runTime);
+  earnedXp = Math.max(10, Math.floor(score / 12) + Math.floor(worldDistance / 80));
+  save.xp += earnedXp; save.totalXp += earnedXp;
+  save.runLog.unshift({ date: new Date().toISOString(), score: Math.floor(score), coins: runCoins, distance: Math.floor(worldDistance), xp: earnedXp, seconds: Math.floor(runTime) });
+  save.runLog = save.runLog.slice(0, 12); persist(); refreshMenuProfile();
+  $('pause-button').classList.add('hidden'); $('final-score').textContent = Math.floor(score); $('best-score').textContent = save.best; $('final-coins').textContent = runCoins; $('final-xp').textContent = earnedXp; $('result-screen').classList.remove('hidden');
+}
+function goToMenu() {
+  if (phase === 'paused') endRun();
+  phase = 'ready'; $('game').classList.add('menu-mode'); $('result-screen').classList.add('hidden'); $('pause-screen').classList.add('hidden'); $('pause-button').classList.add('hidden');
+  $('start-screen').classList.remove('hidden'); $('home-view').classList.remove('hidden'); $('feature-view').classList.add('hidden');
 }
 function doSwipe(dx, dy) {
   if (phase !== 'running') return;
@@ -368,7 +407,7 @@ function update(delta) {
   const movingNow = phase === 'running';
   if (!movingNow) { animateHero(0); return; }
   const speed = Math.min(27, 16 + score / 155);
-  score += delta * (12 + speed * .62); worldDistance += speed * delta;
+  runTime += delta; score += delta * (12 + speed * .62); worldDistance += speed * delta;
   lane += (targetLane - lane) * Math.min(1, delta * 11);
   hero.root.position.x += (LANES[targetLane] - hero.root.position.x) * Math.min(1, delta * 8);
   if (jumpTimer > 0) jumpTimer = Math.max(0, jumpTimer - delta);
@@ -397,7 +436,7 @@ function update(delta) {
         }
       }
       if ((entity.kind === 'coin' || entity.kind === 'star') && !entity.collected && entity.mesh.position.z > -.3 && entity.mesh.position.z < 1.25 && Math.abs(hero.root.position.x - LANES[entity.laneIndex]) < .88) {
-        entity.collected = true; const amount = entity.kind === 'star' ? 10 : 1; runCoins += amount; save.totalCoins += amount; persist(); playSound(entity.kind); updateHud(); remove.push(entity);
+        entity.collected = true; const amount = entity.kind === 'star' ? 10 : 1; runCoins += amount; save.totalCoins += amount; save.walletCoins += amount; persist(); refreshMenuProfile(); playSound(entity.kind); updateHud(); remove.push(entity);
       }
       if (entity.mesh.position.z > 8) remove.push(entity);
     }
@@ -488,11 +527,98 @@ canvas.addEventListener('pointerup', event => { if (!swipeStart) return; const d
 canvas.addEventListener('pointercancel', () => swipeStart = null);
 bindTap('start-button', startRun); bindTap('restart-button', startRun); bindTap('pause-restart', startRun);
 $('pause-button').addEventListener('click', pauseRun); $('resume-button').addEventListener('click', resumeRun);
-$('sound-button').addEventListener('click', () => { soundOn = !soundOn; $('sound-button').textContent = soundOn ? '◖))' : '◖'; $('sound-button').setAttribute('aria-label', soundOn ? 'Sound on' : 'Sound off'); if (soundOn) playSound('coin'); });
+$('pause-menu').addEventListener('click', goToMenu); $('result-menu').addEventListener('click', goToMenu);
+bindFeatureInteractions();
+$('sound-button').addEventListener('click', () => { soundOn = !soundOn; save.soundOn = soundOn; persist(); $('sound-button').textContent = soundOn ? '◖))' : '◖'; $('sound-button').setAttribute('aria-label', soundOn ? 'Sound on' : 'Sound off'); if (soundOn) playSound('coin'); });
 window.addEventListener('resize', resize); window.addEventListener('orientationchange', resize);
 document.addEventListener('visibilitychange', () => { if (document.hidden && phase === 'running') pauseRun(); });
-function readSave() { try { return { ...freshSave, ...JSON.parse(localStorage.getItem(SAVE_KEY) || '{}') }; } catch { return { ...freshSave }; } }
+function readSave() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
+    const data = { ...freshSave, ...stored };
+    if (!Object.prototype.hasOwnProperty.call(stored, 'walletCoins')) data.walletCoins = stored.totalCoins || 0;
+    for (const key of ['runLog', 'unlockedCharacters', 'claimedMissions']) if (!Array.isArray(data[key])) data[key] = [...freshSave[key]];
+    if (!data.unlockedCharacters.includes('trail-scout')) data.unlockedCharacters.unshift('trail-scout');
+    if (!CHARACTERS.some(item => item.id === data.selectedCharacter && data.unlockedCharacters.includes(item.id))) data.selectedCharacter = 'trail-scout';
+    data.xp = Number(data.xp) || 0; data.totalXp = Number(data.totalXp) || data.xp;
+    return data;
+  } catch { return { ...freshSave, runLog: [], unlockedCharacters: ['trail-scout'], claimedMissions: [] }; }
+}
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch { /* A full local store does not stop a run. */ } }
+function refreshMenuProfile() {
+  if (!$('menu-level')) return;
+  $('menu-level').textContent = `LEVEL ${Math.floor(save.totalXp / 250) + 1}`;
+  $('menu-xp').textContent = `${save.xp} XP`;
+  $('menu-wallet').textContent = `${save.walletCoins} COINS`;
+}
+function showFeature(page) {
+  const titles = { characters: ['YOUR RUNNER', 'Choose a character'], missions: ['TRAIL MISSIONS', 'Goals and rewards'], log: ['YOUR HISTORY', 'Player log'], shop: ['TRAIL SHOP', 'Spend your earned coins'], settings: ['PREFERENCES', 'Settings'] };
+  if (!titles[page]) return;
+  $('home-view').classList.add('hidden'); $('feature-view').classList.remove('hidden');
+  $('feature-kicker').textContent = titles[page][0]; $('feature-title').textContent = titles[page][1];
+  const content = $('feature-content');
+  if (page === 'characters') content.innerHTML = renderCharacters();
+  if (page === 'missions') content.innerHTML = renderMissions();
+  if (page === 'log') content.innerHTML = renderLog();
+  if (page === 'shop') content.innerHTML = renderShop();
+  if (page === 'settings') content.innerHTML = renderSettings();
+}
+function renderCharacters() {
+  return `<div class="feature-balance">${save.walletCoins} coins · ${save.xp} XP · ${Math.floor(save.totalPlaySeconds / 60)} min played</div><div class="character-list">${CHARACTERS.map(character => {
+    const unlocked = save.unlockedCharacters.includes(character.id), selected = save.selectedCharacter === character.id;
+    let requirement = 'Ready to run';
+    if (character.cost?.coins) requirement = `${character.cost.coins} coins`;
+    if (character.cost?.xp) requirement = `${character.cost.xp} XP`;
+    if (character.cost?.minutes) requirement = `${character.cost.minutes} minutes played`;
+    const button = selected ? '<button class="small-action selected-action" disabled>SELECTED</button>' : unlocked ? `<button class="small-action" data-select-character="${character.id}">SELECT</button>` : `<button class="small-action" data-unlock-character="${character.id}">UNLOCK · ${requirement}</button>`;
+    return `<article class="character-card ${selected ? 'is-selected' : ''}"><div class="character-portrait ${character.id}"><span>✦</span></div><div class="character-info"><h3>${character.name}</h3><p>${character.title}</p><small>${character.ability}</small></div>${button}</article>`;
+  }).join('')}</div><p class="feature-note">More character looks and abilities can be added as the game grows. Progress is saved on this device.</p>`;
+}
+function renderMissions() {
+  return `<div class="feature-balance">Complete goals during normal play to earn coins and XP.</div><div class="mission-list">${MISSIONS.map(mission => {
+    const progress = Math.min(mission.goal, Number(save[mission.stat]) || 0), claimed = save.claimedMissions.includes(mission.id), ready = progress >= mission.goal && !claimed;
+    return `<article class="mission-card"><div class="mission-head"><div><h3>${mission.name}</h3><p>${mission.detail}</p></div><span>${progress}/${mission.goal}</span></div><div class="mission-track"><i style="width:${progress / mission.goal * 100}%"></i></div><div class="mission-reward">Reward · ${mission.coins} coins + ${mission.xp} XP ${ready ? `<button class="small-action" data-claim-mission="${mission.id}">CLAIM</button>` : claimed ? '<b>CLAIMED</b>' : ''}</div></article>`;
+  }).join('')}</div>`;
+}
+function renderLog() {
+  const level = Math.floor(save.totalXp / 250) + 1, next = level * 250;
+  return `<div class="log-stats"><div><b>${save.runs}</b><small>RUNS</small></div><div><b>${save.best}</b><small>BEST SCORE</small></div><div><b>${save.totalDistance}</b><small>METERS</small></div><div><b>${save.totalCoins}</b><small>COINS FOUND</small></div></div><div class="xp-panel"><b>LEVEL ${level}</b><span>${Math.max(0, next - save.totalXp)} XP to level ${level + 1}</span><div class="mission-track"><i style="width:${save.totalXp % 250 / 250 * 100}%"></i></div></div><h3 class="section-label">RECENT RUNS</h3>${save.runLog.length ? `<div class="run-log">${save.runLog.map(run => `<div><span>${new Date(run.date).toLocaleDateString()}</span><b>${run.score} pts</b><small>${run.distance} m · ${run.coins} coins · +${run.xp} XP</small></div>`).join('')}</div>` : '<p class="empty-note">Your runs will appear here. Start a run to begin your record.</p>'}`;
+}
+function renderShop() {
+  return `<div class="shop-hero"><span>◈</span><h3>Earn it on the trail</h3><p>Your coins and XP unlock characters and rewards. Real-money purchases and ads are not connected, so this shop costs nothing.</p></div><article class="shop-card"><b>CHARACTER LOOKS</b><p>Unlock new runners with coins, XP, or playtime in the Runner screen.</p><button class="small-action" data-open-page="characters">VIEW RUNNERS</button></article><article class="shop-card"><b>OPTIONAL PAID EXTRAS · LATER</b><p>Paid outfits, ad rewards, and store purchases can be considered when there is a budget. No paid services are needed for this version.</p></article>`;
+}
+function renderSettings() {
+  return `<div class="settings-row"><div><b>Game sound</b><small>Music and effects</small></div><button class="toggle-setting ${soundOn ? 'on' : ''}" id="settings-sound">${soundOn ? 'ON' : 'OFF'}</button></div><p class="feature-note">Your game progress is stored on this device. Online accounts and cloud saves can be added later.</p>`;
+}
+function unlockCharacter(id) {
+  const character = CHARACTERS.find(item => item.id === id);
+  if (!character || save.unlockedCharacters.includes(id)) return;
+  if (character.cost?.coins && save.walletCoins >= character.cost.coins) save.walletCoins -= character.cost.coins;
+  else if (character.cost?.xp && save.xp >= character.cost.xp) save.xp -= character.cost.xp;
+  else if (character.cost?.minutes && save.totalPlaySeconds >= character.cost.minutes * 60) { /* Time-based reward has no currency cost. */ }
+  else return;
+  save.unlockedCharacters.push(id); save.selectedCharacter = id; persist(); applyCharacterLook(id); refreshMenuProfile(); showFeature('characters');
+}
+function claimMission(id) {
+  const mission = MISSIONS.find(item => item.id === id);
+  if (!mission || save.claimedMissions.includes(id) || Number(save[mission.stat]) < mission.goal) return;
+  save.claimedMissions.push(id); save.walletCoins += mission.coins; save.xp += mission.xp; save.totalXp += mission.xp; persist(); refreshMenuProfile(); showFeature('missions');
+}
+function bindFeatureInteractions() {
+  $('start-screen').addEventListener('click', event => {
+    const pageButton = event.target.closest('[data-page]'); if (pageButton) showFeature(pageButton.dataset.page);
+    const select = event.target.closest('[data-select-character]');
+    if (select) { const id = select.dataset.selectCharacter; save.selectedCharacter = id; persist(); applyCharacterLook(id); showFeature('characters'); }
+    const unlock = event.target.closest('[data-unlock-character]'); if (unlock) unlockCharacter(unlock.dataset.unlockCharacter);
+    const claim = event.target.closest('[data-claim-mission]'); if (claim) claimMission(claim.dataset.claimMission);
+    const open = event.target.closest('[data-open-page]'); if (open) showFeature(open.dataset.openPage);
+  });
+  $('feature-back').addEventListener('click', () => { $('feature-view').classList.add('hidden'); $('home-view').classList.remove('hidden'); });
+  $('feature-content').addEventListener('click', event => {
+    if (event.target.id === 'settings-sound') { soundOn = !soundOn; save.soundOn = soundOn; persist(); event.target.classList.toggle('on', soundOn); event.target.textContent = soundOn ? 'ON' : 'OFF'; $('sound-button').textContent = soundOn ? '◖))' : '◖'; }
+  });
+}
+
 resize(); updateHud(); requestAnimationFrame(frame);
 window.__starlightReady = true;
 if ('serviceWorker' in navigator && location.protocol !== 'file:') window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
